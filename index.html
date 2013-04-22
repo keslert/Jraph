@@ -2,14 +2,43 @@
 <html>
 <head>
 <script src="jquery-1.9.1.min.js"></script>
+<script src="http://code.jquery.com/ui/1.10.2/jquery-ui.js"></script>
 <script src="js/Chart.min.js"></script>
-<meta name = "viewport" content = "initial-scale = 1, user-scalable = no">
-</head>
-<body>
+<script src="js/Diagram.js"></script>
+<script src="js/bootstrap.js"></script>
 
-<canvas id="canvas" height="450" width="800"></canvas>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.10.2/themes/smoothness/jquery-ui.css" />
+<link rel="stylesheet" type="text/css" href="css/bootstrap.css" />
+<link rel="stylesheet" type="text/css" href="css/custom.css" />
+
+
+
+</head>
+<body style="cursor: auto;">
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+   <div class="navbar-inner">
+     <div class="container">
+       <a class="brand" href="#" style="background:url(img/giraffe-tiny.png) no-repeat"> &nbsp;&nbsp; Jraphs</a>
+       <div class="nav-collapse collapse" id="main-menu">
+        <ul class="nav" >
+          <li><a id="addGraph" href="#">Add Graph</a></li>
+          <li><a id="addGraph" href="#">Json Import</a></li>
+        </ul>
+        <ul class="nav pull-right" id="main-menu-right">
+          <li><a id="saveDocument" href="#">Save Document</a></li>
+        </ul>
+       </div>
+     </div>
+   </div>
+ </div>
+
+
+<br /> <br /> <br />
+<canvas id="chart"></canvas>
+
 <script>
-	var lineChartData = 
+	var data = 
 	{
 		labels : ["1","2","3","4","5","6","7"],
 		datasets : [{
@@ -19,18 +48,22 @@
 			pointStrokeColor : "#fff",
 			data : [65,59,90,81,56,55,40]
 		},{
-			fillColor : "rgba(151,187,205,0.5)",
-			strokeColor : "rgba(151,187,205,1)",
-			pointColor : "rgba(151,187,205,1)",
+			fillColor : "rgba(151,187,151,0.5)",
+			strokeColor : "rgba(151,187,151,1)",
+			pointColor : "rgba(200,151,187,1)",
 			pointStrokeColor : "#fff",
 			data : [28,48,40,19,96,27,10]
 		}]
 	}
-	var lineOptions = {
+	var options = {
 		scaleShowLabels : true,
-		scaleOverride : false
+		scaleOverride : false,
+		animation : false
 	}
-	var myLine = new Chart(document.getElementById("canvas").getContext("2d")).Line(lineChartData, lineOptions);
+
+	var diagram = new Diagram("chart", data, options);
 </script>
+
+
 </body>
 </html>

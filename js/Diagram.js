@@ -1,17 +1,18 @@
-var Line = function(id, data, properties) {
-	this.id = id;
-	this.data = data;
-	this.properties = properties;
-}
+//TODO: Adjusting labels
+//TODO: Import Graph from JSON
+//TODO: Add new blank graph
 
-var Diagram = function(id, data, options) {
+
+var Diagram = function(id, data, properties) {
 	this.canvasId = id;
 	this.outerWrap = id + "-outer";
 	this.innerWrap = id + "-inner";
 	this.accordionId = id + "-accordion";
 	this.chart = {};
-	this.options = options;
+	this.properties = properties;
 	this.data = data;
+	this.panel;
+	this.panelOpen = "";
 
 	this.refreshTimer = null;
 	this.wrap();
@@ -22,43 +23,79 @@ Diagram.prototype.wrap = function() {
 	var me = this;
 	$("#"+this.canvasId).wrap('<div id="'+ this.outerWrap +'" class="outerWrap" />');
 	$("#"+this.canvasId).wrap('<div id="'+ this.innerWrap +'" class="innerWrap" />');
-	$("#"+this.innerWrap).resizable().height('300px').width('500px');
+	$("#"+this.innerWrap).resizable().height('300px').width('600px');
 	$("#"+this.innerWrap).resize(function(e){
 		clearTimeout(me.refreshTimer);
 		me.refreshTimer = setTimeout(function() { me.refresh() }, 300);
 	});
 
-	this.showDataPanel();
+	this.createNavbar();
 }
 
-Diagram.prototype.printLines = function(data) {
-	var str = "";
-	for(var i = 0; i < data.datasets.length; i++) {
-		str += data.datasets[i].data.join() + "\n";
-	}
-	return str;
+Diagram.prototype.createNavbar = function() {
+	var me = this;
+	var list = $("#"+this.outerWrap).append('<div class="options"><ul /></div>').find("ul");
+	list.append('<li><a id="'+this.canvasId + '-data" href="#">Data</a></li>');
+	$("#"+this.canvasId + "-data").click(function() {
+		if(me.panelOpen == "data") {
+			me.hidePanel();
+			me.panelOpen = "";
+		} else {
+			me.showPanel(function() { me.showDataPanel() })
+			me.panelOpen = "data";
+		}
+	});
+	list.append('<li><a id="'+this.canvasId + '-props" href="#">Properties</a></li>');
+	$("#"+this.canvasId + "-props").click(function() {
+		if(me.panelOpen == "props") {
+			me.hidePanel();
+			me.panelOpen = "";
+		} else {
+			me.showPanel(function() { me.showPropertyPanel() })
+			me.panelOpen = "props";
+		}
+	});
+	list.append('<li><a id="'+this.canvasId + '-save" href="#">Download (PNG)</a></li>');
+	$("#"+this.canvasId + "-save").click(function() {
+		Canvas2Image.saveAsPNG(document.getElementById(me.canvasId));
+	});
+	list.append('<li><a id="'+this.canvasId + '-export" href="#">Export JSON</a></li>');
 }
 
-Diagram.prototype.getLineNumber = function(textarea) {
-	return (textarea.value.substr(0, textarea.selectionStart).split("\n").length - 1);
+Diagram.prototype.showPanel = function(panel) {
+	this.hidePanel();
+	panel();
 }
 
-var forEach = function(a,f){
-	for(var i=0; i<a.length; i++){
-		f(a[i],i);
-	}
+Diagram.prototype.hidePanel = function() {
+	$(".data").remove();
 }
 
-var objForEach = function(o, f){
-	for(var key in o){
-		f(o[key], key);
-	}
+Diagram.prototype.showPropertyPanel = function() {
+	var me = this;
+
+	var uid = this.canvasId+"-labels";
+	var list = $("#"+this.outerWrap).append('<div class="data navbar-inner"><h5>Properties:</h5><ul class="form-horizontal" /></div>').find('ul:last');
+	list.append('<li class="control-group"><label class="control-label" for="'+uid+'">X Axis Labels</label> \
+					<div class="controls"><input type="text" id="'+uid+'" value="'+this.data.labels+'"  /></div></li>');
+	$("#"+uid).change(function(){
+		me.updateData(me.data, "labels", this.value);
+	});
+	objForEach(this.properties, function(value, key){
+		var uid = me.canvasId + "-" + key;
+		list.append('<li class="control-group"><label class="control-label" for="'+uid+'">'+me.splitAndCapitalize(key)+'</label> \
+					<div class="controls"><input type="text" id="'+uid+'" value="'+value+'"  /></div></li>');
+
+		$("#"+uid).change(function() {
+			me.updateData(me.properties, key, this.value);
+		});
+	});
 }
 
 Diagram.prototype.showDataPanel = function() {
 	var me = this;
-	$("#"+this.outerWrap).append('<div class="accordion" id='+this.accordionId+'/>');
-	// for(var i = 0; i < this.data.datasets.length; i++) {
+	
+	$("#"+this.outerWrap).append('<div class="data accordion" id='+this.accordionId+'/>');
 	forEach(this.data.datasets, function(dataset, i){
 		var group = $("#"+me.outerWrap + " .accordion").append('<div class="accordion-group navbar-inner">').find('div:last');
 		group.append('<div class="accordion-heading"> \
@@ -68,30 +105,67 @@ Diagram.prototype.showDataPanel = function() {
 		group.append('<div id="'+me.accordionId + i +'" class="accordion-body collapse"> </div>');
 		
 		var list = $("#"+me.accordionId + i).append('<ul class="form-horizontal" />').find('ul:last');
-		// for(var key in dataset) {
+
 		objForEach(dataset, function(value, key){
 			var uid = me.canvasId + "-" + key + "-" + i;
 			list.append('<li class="control-group"><label class="control-label" for="'+uid+'">'+me.splitAndCapitalize(key)+'</label> \
 						<div class="controls"><input type="text" id="'+uid+'" value="'+value+'"  /></div></li>');
 
 			$("#"+uid).change(function(){
-				me.updateData(i, key, this.value);
-				me.refresh();
+				me.updateData(me.data.datasets[i], key, this.value);
 			});
-			
 		});
 	});
 }
-Diagram.prototype.bind = function(object) { 
-	var method = this, oldArguments = arguments.slice.apply(arguments, [1]); 
-	return function() { return method.apply(object, oldArguments); }; 
-} 
 
-Diagram.prototype.updateData = function(index, key, value) {
-	var old = this.data.datasets[index][key];
-	if(key == "data")
-		value = value.split(",");
-	this.data.datasets[index][key] = value;
+Diagram.prototype.refreshDataPanel = function() {
+	var me = this;
+	forEach(this.data.datasets, function(dataset, i) {
+		var uid = me.canvasId + "-" + "data-" + i;
+		$("#"+uid)[0].value = dataset.data;
+	});
+}
+
+Diagram.prototype.refreshPropertyPanel = function() {
+	$("#"+this.canvasId+"-labels")[0].value = this.data.labels;
+}
+
+Diagram.prototype.updateData = function(map, key, value) {
+	if(key == "data") {
+		// TODO: Validate data
+		map[key] = value.split(",");
+		this.equalizeData();
+		this.refreshDataPanel();
+	} else if(key == "labels") {
+		// TODO: Validate labels
+		map[key] = value.split(",");
+		this.equalizeData();
+		this.refreshPropertyPanel();
+	} else {
+		if(value == "true") value = true;
+		else if(value == "false") value = false;
+		map[key] = value;
+	}
+	this.refresh();
+}
+
+Diagram.prototype.equalizeData = function() {
+	var labels = this.data.labels;
+	var datasets = this.data.datasets;
+
+	var max = 0;
+	forEach(datasets, function(dataset, i) {
+		if(dataset.data.length > max)
+			max = dataset.data.length;
+	});
+
+	for(var i = labels.length; i < max; i++)
+		labels.push(i+1);
+
+	forEach(datasets, function(dataset, i) {
+		for(var i = dataset.data.length; i < labels.length; i++)
+			dataset.data.push(0);
+	});
 }
 
 Diagram.prototype.splitAndCapitalize = function(string) {
@@ -99,32 +173,13 @@ Diagram.prototype.splitAndCapitalize = function(string) {
 	return string.match(/[A-Z][a-z]+/g).join(" ");
 }
 
-Diagram.prototype.hideDataPanel = function() {
-
-}
-
 Diagram.prototype.refresh = function () {
 	var ctx = $("#"+this.canvasId)[0].getContext("2d");
 	ctx.canvas.width = $("#"+this.canvasId).width();
 	ctx.canvas.height = $("#"+this.canvasId).height();
-	this.chart = new Chart(ctx).Line(this.data, this.options);
+	this.chart = new Chart(ctx).Line(this.data, this.properties);
 	$("#"+this.canvasId).height('100%');
 	$("#"+this.canvasId).width('100%');
-}
-
-Diagram.prototype.parseLines = function() {
-	var lines = $("#"+this.outerWrap + " textarea").val.split("\n");
-	for(var i in box) {
-
-	}
-}
-
-Diagram.prototype.rename = function() {
-
-}
-
-Diagram.prototype.resize = function() {
-
 }
 
 Diagram.prototype.save = function() {
@@ -139,3 +194,93 @@ Diagram.prototype.defaultColors = function() {
 		{r:100, g:100, b:100}
 	];
 }
+
+var forEach = function(a,f){
+	for(var i=0; i<a.length; i++){
+		f(a[i],i);
+	}
+}
+
+var objForEach = function(o, f){
+	for(var key in o){
+		f(o[key], key);
+	}
+}
+
+
+/*****************************************************************
+ * Canvas2Image v0.1
+ * Copyright (c) 2008 Jacob Seidelin, jseidelin@nihilogic.dk
+ * MIT License [http://www.opensource.org/licenses/mit-license.php]
+ */
+var Canvas2Image = (function() {
+
+	// check if we have canvas support
+	var bHasCanvas = false;
+	var oCanvas = document.createElement("canvas");
+	if (oCanvas.getContext("2d")) {
+		bHasCanvas = true;
+	}
+
+	// no canvas, bail out.
+	if (!bHasCanvas) {
+		return {
+			saveAsBMP : function(){},
+			saveAsPNG : function(){},
+			saveAsJPEG : function(){}
+		}
+	}
+
+	var bHasImageData = !!(oCanvas.getContext("2d").getImageData);
+	var bHasDataURL = !!(oCanvas.toDataURL);
+	var bHasBase64 = !!(window.btoa);
+
+	var strDownloadMime = "image/octet-stream";
+
+	// ok, we're good
+	var readCanvasData = function(oCanvas) {
+		var iWidth = parseInt(oCanvas.width);
+		var iHeight = parseInt(oCanvas.height);
+		return oCanvas.getContext("2d").getImageData(0,0,iWidth,iHeight);
+	}
+	// sends the generated file to the client
+	var saveFile = function(strData) {
+		document.location.href = strData;
+	}
+	// generates a <img> object containing the imagedata
+	var makeImageObject = function(strSource) {
+		var oImgElement = document.createElement("img");
+		oImgElement.src = strSource;
+		return oImgElement;
+	}
+	var scaleCanvas = function(oCanvas, iWidth, iHeight) {
+		if (iWidth && iHeight) {
+			var oSaveCanvas = document.createElement("canvas");
+			oSaveCanvas.width = iWidth;
+			oSaveCanvas.height = iHeight;
+			oSaveCanvas.style.width = iWidth+"px";
+			oSaveCanvas.style.height = iHeight+"px";
+
+			var oSaveCtx = oSaveCanvas.getContext("2d");
+
+			oSaveCtx.drawImage(oCanvas, 0, 0, oCanvas.width, oCanvas.height, 0, 0, iWidth, iHeight);
+			return oSaveCanvas;
+		}
+		return oCanvas;
+	}
+	return {
+		saveAsPNG : function(oCanvas, bReturnImg, iWidth, iHeight) {
+			if (!bHasDataURL) {
+				return false;
+			}
+			var oScaledCanvas = scaleCanvas(oCanvas, iWidth, iHeight);
+			var strData = oScaledCanvas.toDataURL("image/png");
+			if (bReturnImg) {
+				return makeImageObject(strData);
+			} else {
+				saveFile(strData.replace("image/png", strDownloadMime));
+			}
+			return true;
+		},
+	};
+})();

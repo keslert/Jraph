@@ -3,11 +3,12 @@
 //TODO: Add new blank graph
 
 
-var Diagram = function(id, data, properties) {
+var Diagram = function(id, type, data, properties) {
 	this.canvasId = id;
 	this.outerWrap = id + "-outer";
 	this.innerWrap = id + "-inner";
 	this.accordionId = id + "-accordion";
+	this.type = type;
 	this.chart = {};
 	this.properties = properties;
 	this.data = data;
@@ -60,6 +61,10 @@ Diagram.prototype.createNavbar = function() {
 		Canvas2Image.saveAsPNG(document.getElementById(me.canvasId));
 	});
 	list.append('<li><a id="'+this.canvasId + '-export" href="#">Export JSON</a></li>');
+	$("#"+this.canvasId + "-export").click(function() {
+		me.exportJSON();
+	});
+
 }
 
 Diagram.prototype.showPanel = function(panel) {
@@ -182,6 +187,12 @@ Diagram.prototype.refresh = function () {
 	$("#"+this.canvasId).width('100%');
 }
 
+Diagram.prototype.exportJSON = function() {
+	alert(json_encode({'properties':this.properties, 'data':this.data}));
+}
+
+
+
 Diagram.prototype.save = function() {
 
 }
@@ -206,81 +217,3 @@ var objForEach = function(o, f){
 		f(o[key], key);
 	}
 }
-
-
-/*****************************************************************
- * Canvas2Image v0.1
- * Copyright (c) 2008 Jacob Seidelin, jseidelin@nihilogic.dk
- * MIT License [http://www.opensource.org/licenses/mit-license.php]
- */
-var Canvas2Image = (function() {
-
-	// check if we have canvas support
-	var bHasCanvas = false;
-	var oCanvas = document.createElement("canvas");
-	if (oCanvas.getContext("2d")) {
-		bHasCanvas = true;
-	}
-
-	// no canvas, bail out.
-	if (!bHasCanvas) {
-		return {
-			saveAsBMP : function(){},
-			saveAsPNG : function(){},
-			saveAsJPEG : function(){}
-		}
-	}
-
-	var bHasImageData = !!(oCanvas.getContext("2d").getImageData);
-	var bHasDataURL = !!(oCanvas.toDataURL);
-	var bHasBase64 = !!(window.btoa);
-
-	var strDownloadMime = "image/octet-stream";
-
-	// ok, we're good
-	var readCanvasData = function(oCanvas) {
-		var iWidth = parseInt(oCanvas.width);
-		var iHeight = parseInt(oCanvas.height);
-		return oCanvas.getContext("2d").getImageData(0,0,iWidth,iHeight);
-	}
-	// sends the generated file to the client
-	var saveFile = function(strData) {
-		document.location.href = strData;
-	}
-	// generates a <img> object containing the imagedata
-	var makeImageObject = function(strSource) {
-		var oImgElement = document.createElement("img");
-		oImgElement.src = strSource;
-		return oImgElement;
-	}
-	var scaleCanvas = function(oCanvas, iWidth, iHeight) {
-		if (iWidth && iHeight) {
-			var oSaveCanvas = document.createElement("canvas");
-			oSaveCanvas.width = iWidth;
-			oSaveCanvas.height = iHeight;
-			oSaveCanvas.style.width = iWidth+"px";
-			oSaveCanvas.style.height = iHeight+"px";
-
-			var oSaveCtx = oSaveCanvas.getContext("2d");
-
-			oSaveCtx.drawImage(oCanvas, 0, 0, oCanvas.width, oCanvas.height, 0, 0, iWidth, iHeight);
-			return oSaveCanvas;
-		}
-		return oCanvas;
-	}
-	return {
-		saveAsPNG : function(oCanvas, bReturnImg, iWidth, iHeight) {
-			if (!bHasDataURL) {
-				return false;
-			}
-			var oScaledCanvas = scaleCanvas(oCanvas, iWidth, iHeight);
-			var strData = oScaledCanvas.toDataURL("image/png");
-			if (bReturnImg) {
-				return makeImageObject(strData);
-			} else {
-				saveFile(strData.replace("image/png", strDownloadMime));
-			}
-			return true;
-		},
-	};
-})();
